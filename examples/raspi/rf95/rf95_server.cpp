@@ -10,6 +10,7 @@
 // sudo ./rf95_server
 //
 // Contributed by Charles-Henri Hallard based on sample RH_NRF24 by Mike Poublon
+// Modified by Elecrow-keen
 
 #include <bcm2835.h>
 #include <stdio.h>
@@ -19,33 +20,13 @@
 #include <RH_RF69.h>
 #include <RH_RF95.h>
 
-// define hardware used change to fit your need
-// Uncomment the board you have, if not listed 
-// uncommment custom board and set wiring tin custom section
-
-// LoRasPi board 
-// see https://github.com/hallard/LoRasPI
 #define BOARD_LORASPI
 
-// iC880A and LinkLab Lora Gateway Shield (if RF module plugged into)
-// see https://github.com/ch2i/iC880A-Raspberry-PI
-//#define BOARD_IC880A_PLATE
-
-// Raspberri PI Lora Gateway for multiple modules 
-// see https://github.com/hallard/RPI-Lora-Gateway
-//#define BOARD_PI_LORA_GATEWAY
-
-// Dragino Raspberry PI hat
-// see https://github.com/dragino/Lora
-//#define BOARD_DRAGINO_PIHAT
-
-// Now we include RasPi_Boards.h so this will expose defined 
-// constants with CS/IRQ/RESET/on board LED pins definition
 #include "../RasPiBoards.h"
 
 // Our RFM95 Configuration 
 #define RF_FREQUENCY  915.00
-#define RF_NODE_ID    1
+//#define RF_NODE_ID    1
 
 // Create an instance of a driver
 RH_RF95 rf95(RF_CS_PIN, RF_IRQ_PIN);
@@ -107,7 +88,7 @@ int main (int argc, const char* argv[] )
   if (!rf95.init()) {
     fprintf( stderr, "\nRF95 module init failed, Please verify wiring/module\n" );
   } else {
-    // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+    // Defaults after init are 915.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
     // The default transmitter power is 13dBm, using PA_BOOST.
     // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then 
@@ -133,8 +114,8 @@ int main (int argc, const char* argv[] )
     rf95.setFrequency(RF_FREQUENCY);
     
     // If we need to send something
-    rf95.setThisAddress(RF_NODE_ID);
-    rf95.setHeaderFrom(RF_NODE_ID);
+  //  rf95.setThisAddress(RF_NODE_ID);
+  //  rf95.setHeaderFrom(RF_NODE_ID);
     
     // Be sure to grab all node packet 
     // we're sniffing to display, it's a demo
@@ -143,7 +124,7 @@ int main (int argc, const char* argv[] )
     // We're ready to listen for incoming message
     rf95.setModeRx();
 
-    printf( " OK NodeID=%d @ %3.2fMHz\n", RF_NODE_ID, RF_FREQUENCY );
+   // printf( " OK NodeID=%d @ %3.2fMHz\n", RF_NODE_ID, RF_FREQUENCY );
     printf( "Listening packet...\n" );
 
     //Begin the main body of code
@@ -166,7 +147,6 @@ int main (int argc, const char* argv[] )
           digitalWrite(RF_LED_PIN, HIGH);
 #endif
           // Should be a message for us now
-
           uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
           uint8_t len  = sizeof(buf);
           uint8_t from = rf95.headerFrom();
@@ -174,21 +154,22 @@ int main (int argc, const char* argv[] )
           uint8_t id   = rf95.headerId();
           uint8_t flags= rf95.headerFlags();;
           int8_t rssi  = rf95.lastRssi();
-
-	  uint8_t data[] = "Hi, i am Rasberry Pi!";
-          uint8_t lena = sizeof(data);
-          printbuffer(data, lena);
-       	  printf("\n" );
-          rf95.send(data, lena);
-          rf95.waitPacketSent();
-        /*  
+          
           if (rf95.recv(buf, &len)) {
             printf("Packet[%02d] #%d => #%d %ddB: ", len, from, to, rssi);
             printbuffer(buf, len);
+            printf("\n" );
+	    // Send a message to rf95_server
+            uint8_t data[] = "Hi Raspi!";
+            uint8_t len = sizeof(data);
+            printf("Sending to rf95_client");
+            // printbuffer(data, len);
+            printf("\n" );
+            rf95.send(data, len);
+            rf95.waitPacketSent();
           } else {
             Serial.print("receive failed");
           }
-*/
           printf("\n");
         }
         

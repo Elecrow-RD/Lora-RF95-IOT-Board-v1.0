@@ -1,3 +1,17 @@
+// rf95_client.cpp
+//
+// Example program showing how to use RH_RF95 on Raspberry Pi
+// Uses the bcm2835 library to access the GPIO pins to drive the RFM95 module
+// Requires bcm2835 library to be already installed
+// http://www.airspayce.com/mikem/bcm2835/
+// Use the Makefile in this directory:
+// cd example/raspi/rf95
+// make
+// sudo ./rf95_client
+//
+// Contributed by Charles-Henri Hallard based on sample RH_NRF24 by Mike Poublon
+// Modified by Elecrow-keen
+
 #include <bcm2835.h>
 #include <stdio.h>
 #include <signal.h>
@@ -12,7 +26,7 @@
 
 // Our RFM95 Configuration 
 #define RF_FREQUENCY  915.00
-#define RF_NODE_ID    1
+//#define RF_NODE_ID    1
 
 // Create an instance of a driver
 RH_RF95 rf95(RF_CS_PIN, RF_IRQ_PIN);
@@ -74,7 +88,7 @@ int main (int argc, const char* argv[] )
   if (!rf95.init()) {
     fprintf( stderr, "\nRF95 module init failed, Please verify wiring/module\n" );
   } else {
-    // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+    // Defaults after init are 915.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
     // The default transmitter power is 13dBm, using PA_BOOST.
     // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then 
@@ -89,7 +103,7 @@ int main (int argc, const char* argv[] )
 
     // RF95 Modules don't have RFO pin connected, so just use PA_BOOST
     // check your country max power useable, in EU it's +14dB
-//    rf95.setTxPower(14, false);
+    rf95.setTxPower(14, false);
 
     // You can optionally require this module to wait until Channel Activity
     // Detection shows no activity on the channel before transmitting by setting
@@ -110,61 +124,37 @@ int main (int argc, const char* argv[] )
     // We're ready to listen for incoming message
     rf95.setModeRx();
 
- //   printf( " OK NodeID=%d @ %3.2fMHz\n", RF_NODE_ID, RF_FREQUENCY );
+   // printf( " OK NodeID=%d @ %3.2fMHz\n", RF_NODE_ID, RF_FREQUENCY );
     printf( "Listening packet...\n" );
 
     //Begin the main body of code
     while (!force_exit) {
-      
-#ifdef RF_IRQ_PIN
-      // We have a IRQ pin ,pool it instead reading
-      // Modules IRQ registers from SPI in each loop
-      
-      // Rising edge fired ?
-      if (bcm2835_gpio_eds(RF_IRQ_PIN)) {
-        // Now clear the eds flag by setting it to 1
-        bcm2835_gpio_set_eds(RF_IRQ_PIN);
-        //printf("Packet Received, Rising event detect for pin GPIO%d\n", RF_IRQ_PIN);
-#endif
-	  uint8_t data[] = "Hi Raspi!";
-	  rf95.send(data, sizeof(data));
-//          printbuffer(data, sizeof(data));
-	  rf95.waitPacketSent();
+        // Send a message to rf95_server
+         uint8_t data[] = "Hi Raspi!";
+         uint8_t lena = sizeof(data);
+         printf("Sending to rf95_client");
+         // printbuffer(data, len);
+         printf("\n" );
+         rf95.send(data, lena);
+         rf95.waitPacketSent();
+/*
+	 // Now wait for a reply
+        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+        uint8_t len = sizeof(buf);
 
-	if (rf95.available()) { 
-#ifdef RF_LED_PIN
-          led_blink = millis();
-          digitalWrite(RF_LED_PIN, HIGH);
-#endif
-          // Should be a message for us now
-          uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-          uint8_t len  = sizeof(buf);
-          uint8_t from = rf95.headerFrom();
-          uint8_t to   = rf95.headerTo();
-          uint8_t id   = rf95.headerId();
-          uint8_t flags= rf95.headerFlags();;
-          int8_t rssi  = rf95.lastRssi();
-          
+        if (rf95.waitAvailableTimeout(3000)) { 
+          // Should be a reply message for us now   
           if (rf95.recv(buf, &len)) {
-            printf("Packet[%02d] #%d => #%d %ddB: ", len, from, to, rssi);
-            printbuffer(buf, len);
+            printf("got reply: ");
+            printbuffer(buf,len);
+            printf("\nRSSI: %d\n", rf95.lastRssi());
           } else {
-            Serial.print("receive failed");
+            printf("recv failed");
           }
-          printf("\n");
+        } else {
+          printf("No reply, is rf95_server running?\n");
         }
-
-#ifdef RF_IRQ_PIN
-      }
-#endif
-      
-#ifdef RF_LED_PIN
-      // Led blink timer expiration ?
-      if (led_blink && millis()-led_blink>200) {
-        led_blink = 0;
-        digitalWrite(RF_LED_PIN, LOW);
-      }
-#endif
+*/
       // Let OS doing other tasks
       // For timed critical appliation you can reduce or delete
       // this delay, but this will charge CPU usage, take care and monitor
@@ -179,5 +169,4 @@ int main (int argc, const char* argv[] )
   bcm2835_close();
   return 0;
 }
-
 
